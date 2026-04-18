@@ -1,0 +1,7 @@
+<button class="btn btn-primary w-full" [disabled]="loading()" (click)="onLogout()">
+  @if (loading()) {
+    <span class="loading loading-spinner loading-xs"></span>
+  } @else {
+    Log Out
+  }
+</button>

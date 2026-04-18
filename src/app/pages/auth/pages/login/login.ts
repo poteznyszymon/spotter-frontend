@@ -1,23 +1,45 @@
-import { Component, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { Component, inject, signal } from '@angular/core';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
+import { AuthService } from '../../../../services/auth.service';
+import { LoginRequest } from '../../../../models/auth.model';
+import { injectMutation, QueryClient } from '@tanstack/angular-query-experimental';
 
 @Component({
   selector: 'app-login',
   templateUrl: './login.html',
   styleUrl: './login.scss',
-  imports: [FormsModule],
+  imports: [ReactiveFormsModule],
 })
 export class Login {
-  username = signal('');
-  password = signal('');
+  private authService = inject(AuthService);
+  private queryClient = inject(QueryClient);
+  private router = inject(Router);
 
-  loading = signal(false);
+  loginForm = new FormGroup({
+    username: new FormControl('', Validators.required),
+    password: new FormControl('', Validators.required),
+  });
 
-  onSubmit = () => {
-    this.loading.set(true);
-    setTimeout(() => {
-      console.log(this.username(), this.password());
-      this.loading.set(false);
-    }, 1500);
-  };
+  loginMutation = injectMutation(() => ({
+    mutationFn: (request: LoginRequest) => this.authService.login(request),
+    onSuccess: async () => {
+      await this.queryClient.invalidateQueries({ queryKey: ['me'] });
+      await this.router.navigate(['/']);
+    },
+    onError: (error) => console.error('login error:', error),
+  }));
+
+  loading = this.loginMutation.isPending;
+  submitted = false
+
+  onSubmit() {
+    this.submitted = true;
+    if (this.loginForm.invalid) return;
+
+    this.loginMutation.mutate({
+      username: this.loginForm.value.username!,
+      password: this.loginForm.value.password!,
+    });
+  }
 }
